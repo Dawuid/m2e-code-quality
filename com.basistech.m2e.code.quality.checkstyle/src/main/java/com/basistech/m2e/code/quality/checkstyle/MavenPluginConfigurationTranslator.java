@@ -269,14 +269,14 @@ public class MavenPluginConfigurationTranslator {
         }
         return suppressionsLocation;
     }
-    
-    private String getSourceDirectory() throws CoreException {
-		return configurator.getParameterValue("sourceDirectory", String.class,
+
+    private List<String> getSourceDirectories() throws CoreException {
+		return (List<String>) configurator.getParameterValue("sourceDirectories", List.class,
 				session, execution);
     }
-    
-    private String getTestSourceDirectory() throws CoreException {
-    	return configurator.getParameterValue("testSourceDirectory", String.class,
+
+    private List<String> getTestSourceDirectories() throws CoreException {
+    	return (List<String>) configurator.getParameterValue("testSourceDirectories", List.class,
     			session, execution);
     }
 
@@ -324,10 +324,16 @@ public class MavenPluginConfigurationTranslator {
          * enabled).
          */
         Set<String> sourceFolders = new HashSet<String>();
-        sourceFolders.add(this.getSourceDirectory());
+        List<String> sources = this.getSourceDirectories();
+        if (sources != null) {
+        	sourceFolders.addAll( sources);
+        }
 
         if (getIncludeTestSourceDirectory()) {
-            sourceFolders.add(this.getTestSourceDirectory());
+        	List<String> sourcesTest = this.getTestSourceDirectories();
+        	if (sourcesTest != null) {
+        		sourceFolders.addAll(sourcesTest);
+        	}
         }
 
         /**
