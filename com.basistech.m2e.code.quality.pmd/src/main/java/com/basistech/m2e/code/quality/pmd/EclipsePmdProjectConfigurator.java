@@ -53,6 +53,8 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,8 +94,8 @@ public class EclipsePmdProjectConfigurator extends
 			final IProject project, final IProgressMonitor monitor,
 			final MavenPluginWrapper mavenPluginWrapper) throws CoreException {
 
-		MojoExecution pmdGoalExecution = findForkedExecution(
-				mavenPluginWrapper.getMojoExecution(),
+		final MojoExecution execution = findMojoExecution(mavenPluginWrapper);
+		MojoExecution pmdGoalExecution = findForkedExecution(execution,
 				"org.apache.maven.plugins", "maven-pmd-plugin", "pmd");
 		final MavenPluginConfigurationTranslator pluginCfgTranslator = MavenPluginConfigurationTranslator
 				.newInstance(this, session,
@@ -105,6 +107,8 @@ public class EclipsePmdProjectConfigurator extends
 
 		addPMDNature(project, monitor);
 	}
+
+	
 
 	// private static boolean addPMDNatureHere(final IProject project,
 	// final IProgressMonitor monitor) throws CoreException {
@@ -177,9 +181,9 @@ public class EclipsePmdProjectConfigurator extends
 			final MavenPluginConfigurationTranslator pluginCfgTranslator,
 			final IProgressMonitor monitor) throws CoreException {
 
+		final MojoExecution execution = findMojoExecution(pluginWrapper);
 		ResourceResolver resourceResolver = ResourceResolver
-				.newInstance(getPluginClassRealm(session,
-						pluginWrapper.getMojoExecution()));
+				.newInstance(getPluginClassRealm(session, execution));
 		try{
 			final RuleSet ruleset = this.createPmdRuleSet(pluginCfgTranslator,
 					resourceResolver);
@@ -217,13 +221,6 @@ public class EclipsePmdProjectConfigurator extends
 		ruleSet.setName("M2Eclipse PMD RuleSet");
 
 		final List<String> rulesetStringLocations = pluginCfgTranslator.getRulesets();
-
-		// no special rulesets configured - use the same defaults as the maven-pmd-plugin does
-		if (rulesetStringLocations.isEmpty()) {
-			rulesetStringLocations.add("java-basic");
-			rulesetStringLocations.add("java-unusedcode");
-			rulesetStringLocations.add("java-imports");
-		}
 
 		for (final String loc : rulesetStringLocations) {
 			RuleSetReferenceId ruleSetReferenceId = new RuleSetReferenceId(loc);
@@ -339,6 +336,20 @@ public class EclipsePmdProjectConfigurator extends
 						".*.*", ".*"));
 			}
 		}
+	}
+
+	private MojoExecution findMojoExecution(
+			final MavenPluginWrapper mavenPluginWrapper) throws CoreException {
+		final List<MojoExecution> mojoExecutions = mavenPluginWrapper
+				.getMojoExecutions();
+		if (mojoExecutions.size() != 1) {
+			throw new CoreException(new Status(IStatus.ERROR,
+					PmdEclipseConstants.PLUGIN_ID,
+					"Wrong number of executions. Expected 1. Found "
+							+ mojoExecutions.size()));
+		}
+		final MojoExecution execution = mojoExecutions.get(0);
+		return execution;
 	}
 
 }

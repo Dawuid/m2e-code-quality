@@ -19,6 +19,8 @@ package com.basistech.m2e.code.quality.findbugs;
 import static com.basistech.m2e.code.quality.findbugs.FindbugsEclipseConstants.MAVEN_PLUGIN_ARTIFACTID;
 import static com.basistech.m2e.code.quality.findbugs.FindbugsEclipseConstants.MAVEN_PLUGIN_GROUPID;
 
+import java.util.List;
+
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecution;
 import org.eclipse.core.resources.IProject;
@@ -32,7 +34,6 @@ import com.basistech.m2e.code.quality.shared.AbstractMavenPluginProjectConfigura
 import com.basistech.m2e.code.quality.shared.MavenPluginWrapper;
 
 import de.tobject.findbugs.FindbugsPlugin;
-import de.tobject.findbugs.preferences.FindBugsPreferenceInitializer;
 import edu.umd.cs.findbugs.config.UserPreferences;
 
 /**
@@ -59,7 +60,7 @@ public class EclipseFindbugsProjectConfigurator extends
 
 	@Override
 	protected String[] getMavenPluginGoal() {
-		return new String[] { "findbugs" };
+		return new String[] { "findbugs", "check" };
 	}
 
 	@Override
@@ -70,12 +71,15 @@ public class EclipseFindbugsProjectConfigurator extends
 		log.debug("entering handleProjectConfigurationChange");
 		final MavenPluginConfigurationTranslator mavenFindbugsConfig = MavenPluginConfigurationTranslator
 				.newInstance(this, session,
-						mavenProjectFacade.getMavenProject(monitor),
 						mavenPluginWrapper, project);
 		UserPreferences prefs;
 		try {
-			prefs = this.buildFindbugsPreferences(project, mavenFindbugsConfig,
-					session, mavenPluginWrapper.getMojoExecution());
+			final List<MojoExecution> mojoExecutions = mavenPluginWrapper.getMojoExecutions();
+			if (mojoExecutions.size() != 1) {
+				log.error("Wrong number of executions. Expected 1. Found " + mojoExecutions.size());
+				return;
+			}
+			prefs = this.buildFindbugsPreferences(mavenFindbugsConfig);
 			final EclipseFindbugsConfigManager fbPluginNature = EclipseFindbugsConfigManager
 					.newInstance(project);
 			// Add the builder and nature
@@ -97,12 +101,10 @@ public class EclipseFindbugsProjectConfigurator extends
 
 	}
 
-	private UserPreferences buildFindbugsPreferences(final IProject project,
-			final MavenPluginConfigurationTranslator pluginCfgTranslator,
-			final MavenSession session, final MojoExecution execution)
+	private UserPreferences buildFindbugsPreferences(final MavenPluginConfigurationTranslator pluginCfgTranslator)
 			throws CoreException {
 		log.debug("entering buildFindbugsPreferences");
-		final UserPreferences prefs = FindBugsPreferenceInitializer
+		final UserPreferences prefs = UserPreferences
 				.createDefaultUserPreferences();
 		pluginCfgTranslator.setIncludeFilterFiles(prefs);
 		pluginCfgTranslator.setExcludeFilterFiles(prefs);

@@ -43,12 +43,14 @@ import java.util.Set;
 
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecution;
-import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.io.URLInputStreamFacade;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,13 +79,13 @@ public class MavenPluginConfigurationTranslator {
     private final MojoExecution execution;
 
     private MavenPluginConfigurationTranslator(final AbstractMavenPluginProjectConfigurator configurator,
-            final MavenSession session, final MavenProject mavenProject, final MavenPluginWrapper pluginWrapper,
+            final MavenSession session, final MojoExecution execution,
             final IProject project) throws CoreException {
         this.project = project;
-        this.resourceResolver = ResourceResolver.newInstance(configurator.getPluginClassRealm(session,
-            pluginWrapper.getMojoExecution()));
-        this.session = session;
-        this.execution = pluginWrapper.getMojoExecution();
+		this.resourceResolver = ResourceResolver.newInstance(configurator
+				.getPluginClassRealm(session, execution));
+		this.session = session;
+		this.execution = execution;
         this.configurator = configurator;
     }
 
@@ -305,10 +307,18 @@ public class MavenPluginConfigurationTranslator {
     }
 
     public static MavenPluginConfigurationTranslator newInstance(AbstractMavenPluginProjectConfigurator configurator,
-            MavenSession session, final MavenProject mavenProject, final MavenPluginWrapper mavenPlugin,
+            MavenSession session, final MavenPluginWrapper mavenPlugin,
             final IProject project) throws CoreException {
+    	final List<MojoExecution> mojoExecutions = mavenPlugin.getMojoExecutions();
+		if (mojoExecutions.size() != 1) {
+			throw new CoreException(new Status(IStatus.ERROR, FrameworkUtil
+					.getBundle(MavenPluginConfigurationTranslator.class)
+					.getSymbolicName(),
+					"Wrong number of executions. Expected 1. Found "
+							+ mojoExecutions.size()));
+		}
         final MavenPluginConfigurationTranslator m2csConverter = new MavenPluginConfigurationTranslator(configurator,
-            session, mavenProject, mavenPlugin, project);
+            session, mojoExecutions.get(0), project);
         return m2csConverter;
     }
 }
