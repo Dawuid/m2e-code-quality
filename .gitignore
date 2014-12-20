@@ -4,3 +4,6 @@
 target
 bin
 .checkstyle
+.DS_Store
+.pmd
+.pmdruleset.xml
